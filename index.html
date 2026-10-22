@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -88,6 +89,12 @@
             background: #475569;
             border-radius: 4px;
         }
+        /* Tampilan khusus peserta: tidak menampilkan kontrol host/CMS */
+        body.student-mode header .max-w-7xl > div:last-child { display: none !important; }
+        body.student-mode footer { display: none !important; }
+        body.student-mode #view-host,
+        body.student-mode #view-cms { display: none !important; }
+        body.student-mode main { padding-top: 1rem; padding-bottom: 1rem; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between select-none">
@@ -178,7 +185,7 @@
                         <div class="w-full mt-3 text-left">
                             <label for="qr-base-url" class="block text-[11px] font-bold text-slate-300 mb-1">Tautan hosting permainan (HTTPS)</label>
                             <input id="qr-base-url" type="url" placeholder="Tempel URL hosting, contoh: https://nama-game.web.app" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-400" />
-                            <button type="button" onclick="generateJoinQRCode()" class="w-full mt-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg py-2 px-3"><i class="fa-solid fa-qrcode mr-1"></i> Buat / Perbarui QR</button>
+                            <button type="button" onclick="createRoomAndQRCode()" class="w-full mt-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg py-2 px-3"><i class="fa-solid fa-qrcode mr-1"></i> Buat Kode Room & QR</button>
                             <button type="button" onclick="copyStudentJoinURL()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg py-2 px-3"><i class="fa-solid fa-copy mr-1"></i> Salin Tautan Peserta</button>
                         </div>
                         <div id="qr-status" role="status" class="text-[11px] text-amber-300 mt-2">Jika file dibuka dari komputer (file://), unggah ke hosting HTTPS dahulu, lalu tempel URL hosting di atas.</div>
@@ -718,6 +725,13 @@
         let participantsRef = null;
         let participantsListener = null;
         let currentRoomCode = (pageParams.get('room') || DEFAULT_ROOM_CODE).trim().toUpperCase();
+        let hostRoomCreated = false;
+        let roomStatus = 'not-created';
+        let roomStatusRef = null;
+        let roomStatusListener = null;
+        let gameStateRef = null;
+        let gameStateListener = null;
+        let isStudentJoined = false;
 
         // AUTO INITIALIZE ON PAGE LOAD
         window.addEventListener('DOMContentLoaded', () => {
@@ -737,7 +751,24 @@
                 firebaseDB = firebase.database();
                 document.getElementById('firebase-connection-status').innerText = 'Firebase aktif. Menunggu peserta bergabung...';
                 document.getElementById('firebase-connection-status').className = 'text-[11px] text-emerald-300 mt-2';
-                listenForParticipants(currentRoomCode);
+                if (!isStudentLink) {
+                    listenForParticipants(currentRoomCode);
+                    firebaseDB.ref('rooms/' + currentRoomCode + '/meta').once('value').then(snap => {
+                        const meta = snap.val();
+                        if (meta && meta.status && meta.status !== 'closed') {
+                            hostRoomCreated = true;
+                            roomStatus = meta.status;
+                            const roomLabel = document.getElementById('host-room-code');
+                            if (roomLabel) roomLabel.textContent = currentRoomCode;
+                            listenForParticipants(currentRoomCode);
+                            initQRCode();
+                        }
+                    }).catch(err => console.warn('Status room belum dapat dibaca:', err));
+                } else {
+                    prepareStudentOnlyView();
+                    listenForRoomStatus(currentRoomCode);
+                    listenForGameState(currentRoomCode);
+                }
                 firebaseDB.ref('.info/connected').on('value', snap => {
                     const ok = snap.val() === true;
                     const el = document.getElementById('firebase-connection-status');
@@ -750,15 +781,38 @@
                 document.getElementById('firebase-connection-status').className = 'text-[11px] text-rose-300 mt-2';
             }
 
-            try { initQRCode(); } catch (err) { console.warn('QR tidak dapat dibuat saat ini:', err); }
+            if (!isStudentLink) {
+                try { generateJoinQRCode(); } catch (err) { console.warn('QR belum dibuat:', err); }
+            }
             eventBus.onmessage = (event) => handleBroadcastEvent(event.data);
             if (isStudentLink) {
-                switchView('student');
+                prepareStudentOnlyView();
                 document.getElementById('student-join-panel').classList.remove('hidden');
+                document.getElementById('student-room-input').value = currentRoomCode;
+                document.getElementById('student-room-input').readOnly = true;
+                const roomLabel = document.getElementById('student-room-input').previousElementSibling;
+                if (roomLabel) roomLabel.classList.add('hidden');
+                document.getElementById('student-room-input').classList.add('hidden');
+                switchView('student');
+                setStudentJoinAvailability(false, 'Menunggu host membuat room dan memulai permainan.');
+                document.getElementById('student-action-area')?.classList.add('hidden');
+                document.getElementById('student-team-select')?.classList.add('hidden');
             }
         });
 
+        function prepareStudentOnlyView() {
+            document.body.classList.add('student-mode');
+            const tabs = document.querySelector('header .max-w-7xl > div:last-child');
+            if (tabs) tabs.style.display = 'none';
+            const footer = document.querySelector('footer');
+            if (footer) footer.style.display = 'none';
+            document.getElementById('view-host')?.classList.add('hidden');
+            document.getElementById('view-cms')?.classList.add('hidden');
+            document.getElementById('view-student')?.classList.remove('hidden');
+        }
+
         function switchView(viewName) {
+            if (isStudentLink && viewName !== 'student') return;
             document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
             document.querySelectorAll('.nav-tab').forEach(tab => {
                 tab.classList.remove('bg-purple-600', 'text-white', 'shadow');
@@ -793,6 +847,7 @@
         }
 
         function initQRCode() {
+            if (isStudentLink) return;
             const baseInput = document.getElementById('qr-base-url');
             if (baseInput && !baseInput.value.trim() && /^https?:\/\//i.test(window.location.href)) {
                 baseInput.value = window.location.href.split('#')[0];
@@ -800,10 +855,54 @@
             generateJoinQRCode();
         }
 
+        async function createRoomAndQRCode() {
+            if (!firebaseDB) {
+                const status = document.getElementById('qr-status');
+                if (status) status.textContent = 'Firebase belum terhubung. Periksa konfigurasi dan koneksi internet.';
+                return;
+            }
+            const baseInput = document.getElementById('qr-base-url');
+            const base = baseInput && baseInput.value.trim() ? baseInput.value.trim() : window.location.href;
+            if (!/^https:\/\//i.test(base) || /localhost|127\.0\.0\.1/i.test(base)) {
+                const status = document.getElementById('qr-status');
+                if (status) status.textContent = 'Tempel URL hosting HTTPS publik terlebih dahulu. QR tidak dapat digunakan dari file lokal atau localhost.';
+                return;
+            }
+            currentRoomCode = 'ALJ-' + Math.random().toString(36).slice(2, 7).toUpperCase();
+            gameState.roomCode = currentRoomCode;
+            hostRoomCreated = true;
+            roomStatus = 'lobby';
+            const roomLabel = document.getElementById('host-room-code');
+            if (roomLabel) roomLabel.textContent = currentRoomCode;
+            const roomInput = document.getElementById('student-room-input');
+            if (roomInput) roomInput.value = currentRoomCode;
+            try {
+                await firebaseDB.ref('rooms/' + currentRoomCode + '/meta').set({
+                    status: 'lobby',
+                    createdAt: Date.now(),
+                    hostReady: true
+                });
+                listenForParticipants(currentRoomCode);
+                generateJoinQRCode();
+                const status = document.getElementById('qr-status');
+                if (status) status.textContent = 'Room dibuat. QR siap dipindai, tetapi peserta baru dapat bergabung setelah host memulai pertandingan.';
+            } catch (err) {
+                hostRoomCreated = false;
+                const status = document.getElementById('qr-status');
+                if (status) status.textContent = 'Gagal membuat room di Firebase: ' + (err.message || 'periksa Rules database');
+            }
+        }
+
         function generateJoinQRCode() {
             const qrContainer = document.getElementById('qrcode');
             if (!qrContainer) return;
             qrContainer.innerHTML = '';
+            if (!hostRoomCreated) {
+                qrContainer.innerHTML = '<div class="text-center text-xs text-slate-600 p-2">Host harus membuat kode room terlebih dahulu.</div>';
+                const status = document.getElementById('qr-status');
+                if (status) status.textContent = 'Klik “Buat Kode Room & QR” untuk membuat kode baru dan barcode.';
+                return;
+            }
             const joinURL = getStudentJoinURL(currentRoomCode);
             const note = document.getElementById('qr-join-url');
             const status = document.getElementById('qr-status');
@@ -877,23 +976,93 @@
             });
         }
 
+        function setStudentJoinAvailability(enabled, message) {
+            const button = document.getElementById('student-join-button');
+            const error = document.getElementById('student-join-error');
+            if (button) {
+                button.disabled = !enabled;
+                button.classList.toggle('opacity-50', !enabled);
+                button.classList.toggle('cursor-not-allowed', !enabled);
+                button.textContent = enabled ? 'Gabung Permainan' : 'Menunggu Host';
+            }
+            if (error && message) {
+                error.textContent = message;
+                error.classList.remove('hidden');
+            }
+        }
+
+        function listenForRoomStatus(roomCode) {
+            if (!firebaseDB) return;
+            if (roomStatusRef && roomStatusListener) roomStatusRef.off('value', roomStatusListener);
+            roomStatusRef = firebaseDB.ref('rooms/' + roomCode + '/meta');
+            roomStatusListener = snap => {
+                const meta = snap.val();
+                roomStatus = meta && meta.status ? meta.status : 'not-created';
+                if (!isStudentJoined) {
+                    if (roomStatus === 'started') {
+                        setStudentJoinAvailability(true, 'Host sudah memulai pertandingan. Masukkan nama untuk bergabung.');
+                    } else if (roomStatus === 'lobby') {
+                        setStudentJoinAvailability(false, 'Room sudah dibuat. Tunggu sampai host memulai pertandingan.');
+                    } else {
+                        setStudentJoinAvailability(false, 'Room belum tersedia. Pindai QR yang ditampilkan host setelah room dibuat.');
+                    }
+                }
+                const statusMsg = document.getElementById('student-status-msg');
+                if (statusMsg && !isStudentJoined) {
+                    statusMsg.textContent = roomStatus === 'started'
+                        ? 'Pertandingan dimulai oleh host. Silakan bergabung.'
+                        : 'Menunggu host memulai pertandingan...';
+                }
+            };
+            roomStatusRef.on('value', roomStatusListener, err => {
+                setStudentJoinAvailability(false, 'Tidak dapat memeriksa status room. Periksa koneksi atau Rules Firebase.');
+                console.error('Gagal membaca status room:', err);
+            });
+        }
+
+        function listenForGameState(roomCode) {
+            if (!firebaseDB) return;
+            if (gameStateRef && gameStateListener) gameStateRef.off('value', gameStateListener);
+            gameStateRef = firebaseDB.ref('rooms/' + roomCode + '/state');
+            gameStateListener = snap => {
+                const record = snap.val();
+                if (!record || !record.state) return;
+                const remote = record.state;
+                if (remote && typeof remote === 'object') {
+                    const keepTimerInterval = gameState.timerInterval;
+                    Object.assign(gameState, remote);
+                    gameState.timerInterval = keepTimerInterval;
+                    if (isStudentLink) updateStudentUI();
+                }
+            };
+            gameStateRef.on('value', gameStateListener, err => console.error('Gagal membaca state permainan:', err));
+        }
+
         async function joinArena() {
             const nameInput = document.getElementById('student-name-input');
             const roomInput = document.getElementById('student-room-input');
             const error = document.getElementById('student-join-error');
             const button = document.getElementById('student-join-button');
             const name = nameInput.value.trim();
-            const roomCode = (roomInput.value.trim() || DEFAULT_ROOM_CODE).toUpperCase();
+            const roomCode = (pageParams.get('room') || '').trim().toUpperCase();
             error.classList.add('hidden');
+            if (!isStudentLink || !roomCode) { error.textContent = 'Peserta harus membuka halaman melalui QR resmi dari host.'; error.classList.remove('hidden'); return; }
             if (!name) { error.textContent = 'Masukkan nama terlebih dahulu.'; error.classList.remove('hidden'); nameInput.focus(); return; }
             if (!firebaseDB) { error.textContent = 'Belum terhubung ke Firebase. Periksa koneksi dan konfigurasi database.'; error.classList.remove('hidden'); return; }
-            button.disabled = true; button.textContent = 'Menghubungkan...';
+            button.disabled = true; button.textContent = 'Memeriksa room...';
             try {
+                const metaSnap = await firebaseDB.ref('rooms/' + roomCode + '/meta').once('value');
+                const meta = metaSnap.val();
+                if (!meta || meta.status !== 'started') {
+                    throw new Error('Host belum memulai pertandingan. Tunggu hingga host menekan tombol mulai.');
+                }
                 if (currentParticipantRef) {
                     try { await currentParticipantRef.update({ online: false, leftAt: Date.now() }); } catch (_) {}
                 }
                 currentRoomCode = roomCode;
                 listenForParticipants(roomCode);
+                listenForRoomStatus(roomCode);
+                listenForGameState(roomCode);
                 const participants = firebaseDB.ref('rooms/' + roomCode + '/participants');
                 currentParticipantRef = participants.push();
                 currentParticipantId = currentParticipantRef.key;
@@ -907,7 +1076,10 @@
                         }
                     });
                 }
+                isStudentJoined = true;
                 document.getElementById('student-join-panel').classList.add('hidden');
+                document.getElementById('student-action-area')?.classList.remove('hidden');
+                document.getElementById('student-team-select')?.classList.remove('hidden');
                 document.getElementById('student-status-msg').innerHTML = '<i class="fa-solid fa-wifi text-emerald-400 mr-1"></i> Bergabung sebagai ' + escapeHtml(name) + ' · Room ' + escapeHtml(roomCode);
                 document.getElementById('student-status-msg').className = 'text-center text-xs text-emerald-300 bg-emerald-950/30 py-2 rounded-xl border border-emerald-800';
                 initQRCode();
@@ -916,7 +1088,11 @@
                 console.error('Gagal bergabung:', err);
                 error.textContent = 'Gagal bergabung: ' + (err.message || 'periksa Rules Firebase');
                 error.classList.remove('hidden');
-            } finally { button.disabled = false; button.textContent = 'Gabung Permainan'; }
+            } finally {
+                const started = roomStatus === 'started';
+                button.disabled = !started || isStudentJoined;
+                button.textContent = isStudentJoined ? 'Sudah Bergabung' : (started ? 'Gabung Permainan' : 'Menunggu Host');
+            }
         }
 
         function escapeHtml(value) {
@@ -929,7 +1105,27 @@
             renderScoreboardHost();
         }
 
-        function startMatch(roundType) {
+        async function startMatch(roundType) {
+            if (!hostRoomCreated || !lastStudentJoinURL) {
+                alert('Buat kode room dan QR terlebih dahulu sebelum memulai pertandingan.');
+                return;
+            }
+            if (!firebaseDB) {
+                alert('Firebase belum terhubung. Periksa konfigurasi dan koneksi internet.');
+                return;
+            }
+            try {
+                await firebaseDB.ref('rooms/' + currentRoomCode + '/meta').update({
+                    status: 'started',
+                    startedAt: Date.now(),
+                    hostReady: true
+                });
+                roomStatus = 'started';
+            } catch (err) {
+                alert('Tidak dapat memulai room di Firebase: ' + (err.message || 'periksa Rules database'));
+                return;
+            }
+            gameState.roomCode = currentRoomCode;
             gameState.activeRound = roundType;
             gameState.currentTeamIndex = 1;
             gameState.teamQuestionCount = 1;
@@ -1342,6 +1538,11 @@
 
         function resetGameFull() {
             closeLeaderboard();
+            if (firebaseDB && hostRoomCreated) {
+                firebaseDB.ref('rooms/' + currentRoomCode + '/meta').update({ status: 'lobby', resetAt: Date.now() })
+                    .catch(err => console.warn('Gagal mengubah status room:', err));
+                roomStatus = 'lobby';
+            }
             for (let key in gameState.scores) gameState.scores[key] = 0;
             gameState.currentQuestionIndex = 0;
             gameState.currentTeamIndex = 1;
