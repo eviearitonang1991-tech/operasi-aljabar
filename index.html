@@ -171,10 +171,19 @@
 
                     <div class="flex flex-col items-center justify-center bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
                         <div class="text-xs font-bold uppercase text-slate-400 mb-2">Pindai QR Untuk Masuk Room HP</div>
-                        <div id="qrcode" class="p-2 bg-white rounded-xl shadow-lg my-2"></div>
+                        <div id="qrcode" class="p-2 bg-white rounded-xl shadow-lg my-2 min-w-[156px] min-h-[156px] flex items-center justify-center">
+                            <span class="text-xs text-slate-500">Menyiapkan QR...</span>
+                        </div>
                         <div class="text-xs font-mono text-cyan-400 mt-1">Kode Room: <span id="host-room-code" class="font-bold text-base text-white">ALJ-2026</span></div>
-                        <div id="qr-join-url" class="hidden text-[10px] break-all text-slate-500 mt-1"></div>
-                        <p class="text-[11px] text-slate-500 mt-1">Scan dengan HP, masukkan nama, lalu pilih tim. Halaman harus dibuka melalui tautan hosting HTTPS agar dapat diakses HP.</p>
+                        <div class="w-full mt-3 text-left">
+                            <label for="qr-base-url" class="block text-[11px] font-bold text-slate-300 mb-1">Tautan hosting permainan (HTTPS)</label>
+                            <input id="qr-base-url" type="url" placeholder="Tempel URL hosting, contoh: https://nama-game.web.app" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-400" />
+                            <button type="button" onclick="generateJoinQRCode()" class="w-full mt-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg py-2 px-3"><i class="fa-solid fa-qrcode mr-1"></i> Buat / Perbarui QR</button>
+                            <button type="button" onclick="copyStudentJoinURL()" class="w-full mt-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg py-2 px-3"><i class="fa-solid fa-copy mr-1"></i> Salin Tautan Peserta</button>
+                        </div>
+                        <div id="qr-status" role="status" class="text-[11px] text-amber-300 mt-2">Jika file dibuka dari komputer (file://), unggah ke hosting HTTPS dahulu, lalu tempel URL hosting di atas.</div>
+                        <div id="qr-join-url" class="text-[10px] break-all text-slate-400 mt-1"></div>
+                        <p class="text-[11px] text-slate-500 mt-2">Siswa harus membuka URL hosting publik melalui HP. QR yang berisi alamat file lokal komputer tidak dapat dibuka dari HP.</p>
                     </div>
                 </div>
 
@@ -692,7 +701,14 @@
             gameHistory: []
         };
 
-        const eventBus = new BroadcastChannel('aljabar_arena_bus');
+        // BroadcastChannel tidak tersedia pada sebagian browser/file lokal; jangan biarkan ini menggagalkan aplikasi.
+        let eventBus;
+        try {
+            eventBus = new BroadcastChannel('aljabar_arena_bus');
+        } catch (err) {
+            console.warn('BroadcastChannel tidak tersedia; mode tab lokal digunakan.', err);
+            eventBus = { postMessage: () => {}, onmessage: null, close: () => {} };
+        }
         let firebaseDB = null;
         const DEFAULT_ROOM_CODE = 'ALJ-2026';
         const pageParams = new URLSearchParams(window.location.search);
@@ -705,7 +721,12 @@
 
         // AUTO INITIALIZE ON PAGE LOAD
         window.addEventListener('DOMContentLoaded', () => {
-            loadFromLocalStorage();
+            try { loadFromLocalStorage(); } catch (err) {
+                console.warn('Data lokal lama tidak dapat dibaca; menggunakan bank soal bawaan.', err);
+                try { localStorage.removeItem('aljabar_arena_questions'); localStorage.removeItem('aljabar_arena_history'); } catch (_) {}
+                gameState.questions = [...DEFAULT_QUESTIONS];
+                gameState.gameHistory = [];
+            }
             renderScoreboardHost();
             renderCMSTable();
             renderHistoryLogs();
@@ -729,7 +750,7 @@
                 document.getElementById('firebase-connection-status').className = 'text-[11px] text-rose-300 mt-2';
             }
 
-            initQRCode();
+            try { initQRCode(); } catch (err) { console.warn('QR tidak dapat dibuat saat ini:', err); }
             eventBus.onmessage = (event) => handleBroadcastEvent(event.data);
             if (isStudentLink) {
                 switchView('student');
@@ -754,31 +775,82 @@
             }
         }
 
+        let lastStudentJoinURL = '';
+
         function getStudentJoinURL(roomCode = currentRoomCode) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('role', 'student');
-            url.searchParams.set('room', (roomCode || DEFAULT_ROOM_CODE).toUpperCase());
-            url.hash = '';
-            return url.toString();
+            const baseInput = document.getElementById('qr-base-url');
+            let base = baseInput && baseInput.value.trim() ? baseInput.value.trim() : window.location.href;
+            // A QR code pointing to file:// or localhost cannot be opened by students on their phones.
+            if (!/^https?:\/\//i.test(base)) return '';
+            try {
+                const url = new URL(base);
+                if (url.protocol !== 'https:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') return '';
+                url.searchParams.set('role', 'student');
+                url.searchParams.set('room', (roomCode || DEFAULT_ROOM_CODE).toUpperCase());
+                url.hash = '';
+                return url.toString();
+            } catch (_) { return ''; }
         }
 
         function initQRCode() {
+            const baseInput = document.getElementById('qr-base-url');
+            if (baseInput && !baseInput.value.trim() && /^https?:\/\//i.test(window.location.href)) {
+                baseInput.value = window.location.href.split('#')[0];
+            }
+            generateJoinQRCode();
+        }
+
+        function generateJoinQRCode() {
             const qrContainer = document.getElementById('qrcode');
+            if (!qrContainer) return;
             qrContainer.innerHTML = '';
             const joinURL = getStudentJoinURL(currentRoomCode);
-            new QRCode(qrContainer, {
-                text: joinURL, width: 140, height: 140,
-                colorDark: '#0f172a', colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H
-            });
             const note = document.getElementById('qr-join-url');
-            if (note) note.textContent = joinURL;
+            const status = document.getElementById('qr-status');
+            lastStudentJoinURL = joinURL;
+            if (!joinURL) {
+                qrContainer.innerHTML = '<div class="text-center text-xs text-slate-600 p-2">QR belum dapat dibuat.<br>Masukkan URL hosting HTTPS.</div>';
+                if (note) note.textContent = '';
+                if (status) status.textContent = 'Alamat saat ini adalah file lokal atau belum valid. Unggah HTML ke hosting HTTPS (misalnya Firebase Hosting), lalu tempel URL publiknya di kolom atas.';
+                return;
+            }
+            if (typeof QRCode === 'undefined') {
+                qrContainer.innerHTML = '<div class="text-center text-xs text-slate-600 p-2">Pustaka QR gagal dimuat.<br>Periksa internet lalu muat ulang.</div>';
+                if (status) status.textContent = 'Pustaka pembuat QR tidak berhasil dimuat dari CDN. Periksa koneksi internet.';
+                if (note) note.textContent = joinURL;
+                return;
+            }
+            try {
+                new QRCode(qrContainer, { text: joinURL, width: 180, height: 180, colorDark: '#0f172a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+                if (note) note.textContent = joinURL;
+                if (status) status.textContent = 'QR siap. Coba pindai dengan kamera HP; tautan harus dapat dibuka tanpa login ke komputer guru.';
+            } catch (err) {
+                qrContainer.textContent = 'QR gagal dibuat. Periksa URL dan muat ulang halaman.';
+                if (status) status.textContent = 'QR gagal dibuat: ' + (err.message || 'kesalahan tidak diketahui');
+            }
+        }
+
+        async function copyStudentJoinURL() {
+            const url = lastStudentJoinURL || getStudentJoinURL(currentRoomCode);
+            const status = document.getElementById('qr-status');
+            if (!url) {
+                if (status) status.textContent = 'Belum ada tautan yang dapat disalin. Masukkan URL hosting HTTPS terlebih dahulu.';
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                if (status) status.textContent = 'Tautan peserta berhasil disalin.';
+            } catch (_) {
+                if (status) status.textContent = 'Salin tautan ini secara manual dari teks URL yang ditampilkan di bawah QR.';
+            }
         }
 
         function listenForParticipants(roomCode) {
             if (!firebaseDB) return;
             if (participantsRef && participantsListener) participantsRef.off('value', participantsListener);
             currentRoomCode = (roomCode || DEFAULT_ROOM_CODE).trim().toUpperCase();
+            const roomLabel = document.getElementById('host-room-code');
+            if (roomLabel) roomLabel.textContent = currentRoomCode;
             participantsRef = firebaseDB.ref('rooms/' + currentRoomCode + '/participants');
             participantsListener = snapshot => {
                 const all = snapshot.val() || {};
@@ -1399,16 +1471,24 @@
         }
 
         function saveToLocalStorage() {
-            localStorage.setItem('aljabar_arena_questions', JSON.stringify(gameState.questions));
-            localStorage.setItem('aljabar_arena_history', JSON.stringify(gameState.gameHistory));
+            try {
+                localStorage.setItem('aljabar_arena_questions', JSON.stringify(gameState.questions));
+                localStorage.setItem('aljabar_arena_history', JSON.stringify(gameState.gameHistory));
+            } catch (err) { console.warn('Penyimpanan lokal tidak tersedia:', err); }
         }
 
         function loadFromLocalStorage() {
-            const savedQ = localStorage.getItem('aljabar_arena_questions');
-            const savedH = localStorage.getItem('aljabar_arena_history');
-
-            if (savedQ) gameState.questions = JSON.parse(savedQ);
-            if (savedH) gameState.gameHistory = JSON.parse(savedH);
+            let savedQ = null, savedH = null;
+            try { savedQ = localStorage.getItem('aljabar_arena_questions'); } catch (_) {}
+            try { savedH = localStorage.getItem('aljabar_arena_history'); } catch (_) {}
+            if (savedQ) {
+                try { const parsed = JSON.parse(savedQ); if (Array.isArray(parsed)) gameState.questions = parsed; }
+                catch (err) { console.warn('Bank soal lokal rusak; memakai bank soal bawaan.', err); }
+            }
+            if (savedH) {
+                try { const parsed = JSON.parse(savedH); if (Array.isArray(parsed)) gameState.gameHistory = parsed; }
+                catch (err) { console.warn('Riwayat lokal rusak; memulai riwayat baru.', err); }
+            }
         }
 
         function broadcastState(eventType, payload = {}) {
