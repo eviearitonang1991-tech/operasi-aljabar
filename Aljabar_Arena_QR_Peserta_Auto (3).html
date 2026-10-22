@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALJABAR ARENA: BATTLE OF THE BRAINS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- FIREBASE SDK COMPAT (REALTIME SYNC ONLINE) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        display: ['Fredoka', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            purple: '#6d28d9',
+                            dark: '#0f172a',
+                            neonPink: '#f43f5e',
+                            neonBlue: '#38bdf8',
+                            neonGreen: '#4ade80',
+                            accent: '#f59e0b'
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-short': 'bounce 0.5s ease-in-out 2',
+                        'shake': 'shake 0.4s ease-in-out'
+                    },
+                    keyframes: {
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '20%, 60%': { transform: 'translateX(-10px)' },
+                            '40%, 80%': { transform: 'translateX(10px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f8fafc;
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+        }
+        .glow-box {
+            box-shadow: 0 0 25px rgba(109, 40, 217, 0.35);
+        }
+        .glow-box-danger {
+            box-shadow: 0 0 30px rgba(244, 63, 94, 0.6);
+        }
+        .glow-text {
+            text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+        }
+        .buzzer-btn {
+            background: radial-gradient(circle, #f43f5e 0%, #be123c 100%);
+            box-shadow: 0 12px 0 #881337, 0 15px 25px rgba(244, 63, 94, 0.5);
+            transition: all 0.1s ease;
+        }
+        .buzzer-btn:active {
+            transform: translateY(8px);
+            box-shadow: 0 4px 0 #881337, 0 5px 10px rgba(244, 63, 94, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between select-none">
+
+    <!-- TOP NAVIGATION & MODE SWITCHER -->
+    <header class="bg-slate-900/90 border-b border-slate-800 backdrop-blur sticky top-0 z-50 px-4 py-2.5">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-purple-600 to-pink-500 p-2 rounded-xl shadow-lg">
+                    <i class="fa-solid fa-square-root-variable text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-lg md:text-xl bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-300 to-pink-400">
+                        ALJABAR ARENA
+                    </h1>
+                    <p class="text-[10px] tracking-wider uppercase font-semibold text-purple-400">Battle of The Brains</p>
+                </div>
+            </div>
+
+            <!-- VIEW MODES TAB -->
+            <div class="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700">
+                <button onclick="switchView('host')" id="tab-host" class="nav-tab px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold flex items-center gap-1.5 transition-all bg-purple-600 text-white shadow">
+                    <i class="fa-solid fa-desktop"></i>
+                    <span>Host / Proyektor</span>
+                </button>
+                <button onclick="switchView('student')" id="tab-student" class="nav-tab px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span>Peserta (HP)</span>
+                </button>
+                <button onclick="switchView('cms')" id="tab-cms" class="nav-tab px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold text-slate-400 hover:text-white flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Master Soal & Log</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 md:p-6 flex flex-col justify-center">
+
+        <!-- VIEW 1: HOST / LAYAR UTAMA -->
+        <section id="view-host" class="view-panel space-y-6">
+            <div id="participant-live-panel" class="bg-slate-900/80 border border-cyan-800/70 rounded-2xl p-4 max-w-5xl mx-auto w-full">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="text-xs uppercase tracking-wider font-bold text-cyan-300"><i class="fa-solid fa-users mr-1"></i> Peserta Terhubung</div>
+                        <div class="text-sm text-slate-400">Jumlah akan diperbarui otomatis saat siswa berhasil bergabung.</div>
+                    </div>
+                    <div class="text-3xl font-black font-mono text-cyan-300"><span id="participant-count">0</span><span class="text-sm text-slate-400 ml-2">peserta online</span></div>
+                </div>
+                <div id="participant-roster" class="flex flex-wrap gap-2 mt-3 text-xs text-slate-300"><span class="text-slate-500">Belum ada peserta bergabung.</span></div>
+                <div id="firebase-connection-status" class="text-[11px] text-amber-300 mt-2">Menghubungkan ke Firebase...</div>
+            </div>
+            <div id="host-lobby-panel" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 glow-box max-w-3xl mx-auto">
+                <div class="text-center mb-6">
+                    <span class="bg-purple-900/60 text-purple-300 border border-purple-700/50 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Game Control Center</span>
+                    <h2 class="text-2xl md:text-3xl font-display font-extrabold mt-2 text-white">Persiapan Ruang Pertandingan</h2>
+                    <p class="text-sm text-slate-400 mt-1">Sistem Otomatis: Babak Wajib (5 soal/tim) &rarr; Lemparan jika salah &rarr; Babak Rebutan</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div class="space-y-4 bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Jumlah Tim Bertanding (2 - 6)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="range" id="host-team-count-input" min="2" max="6" value="4" oninput="updateTeamCountLabel(this.value)" class="w-full accent-purple-500 bg-slate-700 rounded-lg cursor-pointer">
+                                <span id="team-count-display" class="bg-purple-600 text-white font-bold text-lg px-3 py-1 rounded-lg min-w-[40px] text-center">4</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Batas Waktu Soal Wajib (Detik)</label>
+                            <input type="number" id="host-timer-wajib" value="30" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm focus:border-purple-500 outline-none text-white font-bold">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Batas Waktu Soal Rebutan (Detik)</label>
+                            <input type="number" id="host-timer-rebutan" value="15" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm focus:border-purple-500 outline-none text-white font-bold">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                        <div class="text-xs font-bold uppercase text-slate-400 mb-2">Pindai QR Untuk Masuk Room HP</div>
+                        <div id="qrcode" class="p-2 bg-white rounded-xl shadow-lg my-2"></div>
+                        <div class="text-xs font-mono text-cyan-400 mt-1">Kode Room: <span id="host-room-code" class="font-bold text-base text-white">ALJ-2026</span></div>
+                        <div id="qr-join-url" class="hidden text-[10px] break-all text-slate-500 mt-1"></div>
+                        <p class="text-[11px] text-slate-500 mt-1">Scan dengan HP, masukkan nama, lalu pilih tim. Halaman harus dibuka melalui tautan hosting HTTPS agar dapat diakses HP.</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                    <button onclick="startMatch('wajib')" class="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Mulai Babak 1: Soal Wajib (Per Tim)</span>
+                    </button>
+                    <button onclick="startMatch('rebutan')" class="flex-1 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Langsung Babak 2: Rebutan</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- LIVE MATCH DISPLAY -->
+            <div id="host-arena-panel" class="hidden space-y-6">
+                <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-xl">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span id="host-babak-badge" class="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-purple-900/80 text-purple-300 border border-purple-600">
+                            Babak 1: Soal Wajib
+                        </span>
+                        <span id="host-target-team-badge" class="px-3 py-1.5 rounded-full text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-700">
+                            Giliran: Tim 1 (Soal 1/5)
+                        </span>
+                        <span id="host-steal-indicator" class="hidden px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-rose-950 text-rose-300 border border-rose-600 animate-pulse">
+                            <i class="fa-solid fa-bolt text-amber-400"></i> Mode Lemparan / Rebutan Steal!
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden sm:block">
+                            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Sisa Waktu</div>
+                            <div class="text-xs text-slate-500">Detik Timer</div>
+                        </div>
+                        <div id="host-timer-box" class="w-16 h-16 rounded-2xl bg-slate-950 border-2 border-purple-500 flex items-center justify-center font-mono font-black text-2xl text-cyan-400 shadow-[0_0_15px_rgba(56,189,248,0.3)]">
+                            30
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="swapCurrentQuestionHost()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow" title="Tukar soal aktif dengan Soal Cadangan">
+                            <i class="fa-solid fa-arrows-rotate"></i> Tukar Soal (Cadangan)
+                        </button>
+                        <button onclick="nextQuestion()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-forward"></i> Lewati / Berikutnya
+                        </button>
+                        <button onclick="resetBuzzerHost()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate-left"></i> Reset Buzzer
+                        </button>
+                        <button onclick="endMatch()" class="bg-rose-600/80 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition">
+                            Selesai Match
+                        </button>
+                    </div>
+                </div>
+
+                <div id="question-card-container" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 md:p-8 relative overflow-hidden glow-box transition-all">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 text-slate-500 font-black text-8xl pointer-events-none select-none">
+                        <i class="fa-solid fa-square-root-variable"></i>
+                    </div>
+
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            Pertanyaan <span id="host-q-index" class="text-white font-mono text-base">1</span> / <span id="host-q-total">5</span>
+                        </span>
+                        <span id="host-q-category" class="bg-slate-800 text-cyan-300 border border-slate-700 text-xs px-3 py-1 rounded-full font-semibold">
+                            Penjumlahan Aljabar
+                        </span>
+                    </div>
+
+                    <div id="host-question-text" class="text-2xl md:text-4xl font-display font-extrabold text-white my-4 leading-tight">
+                        Sederhanakan bentuk aljabar berikut: 3x + 5y + 2x - 3y = ...
+                    </div>
+
+                    <div id="host-options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <!-- Rendered dynamically -->
+                    </div>
+
+                    <div id="host-wrong-alert" class="hidden mt-6 p-4 rounded-xl bg-gradient-to-r from-rose-900/80 to-amber-900/80 border-2 border-rose-500 animate-shake flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-rose-600 text-white p-3 rounded-xl font-black text-2xl animate-pulse">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div>
+                                <h4 id="wrong-alert-title" class="font-bold text-lg text-rose-200 uppercase tracking-wide">JAWABAN SALAH / WAKTU HABIS!</h4>
+                                <p id="wrong-alert-desc" class="text-xs text-slate-300">Soal sekarang dilempar! Tim lain dipersilakan menekan buzzer secepatnya!</p>
+                            </div>
+                        </div>
+                        <button onclick="dismissWrongAlert()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg transition shadow">
+                            Mengerti (Buka Buzzer)
+                        </button>
+                    </div>
+
+                    <div id="host-buzzer-alert" class="hidden mt-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/20 to-rose-500/20 border-2 border-amber-500 animate-pulse flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-amber-500 text-slate-950 p-3 rounded-xl font-black text-xl">
+                                <i class="fa-solid fa-bell"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg text-amber-300">BUZZER DITEKAN!</h4>
+                                <p class="text-xs text-slate-300"><span id="buzzer-winner-name" class="font-extrabold text-cyan-300 text-sm">TIM 1</span> menekan buzzer pertama kali!</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="gradeBuzzerAnswer(true)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition shadow">
+                                <i class="fa-solid fa-check"></i> Jawaban Benar (+100)
+                            </button>
+                            <button onclick="gradeBuzzerAnswer(false)" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition shadow">
+                                <i class="fa-solid fa-xmark"></i> Salah (-50)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-trophy text-amber-400"></i> Papan Skor Utama Real-Time
+                    </h3>
+                    <div id="host-scoreboard-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <!-- Dynamic Team Score Cards -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- LEADERBOARD MODAL -->
+            <div id="host-leaderboard-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 md:p-8 max-w-2xl w-full text-center glow-box space-y-6 relative overflow-hidden">
+                    <div class="inline-block bg-gradient-to-tr from-amber-400 to-yellow-200 text-slate-950 p-4 rounded-full shadow-2xl animate-bounce">
+                        <i class="fa-solid fa-crown text-4xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-display font-extrabold text-white">PEMENANG MATCH</h2>
+                        <p class="text-xs text-purple-300 uppercase tracking-widest mt-1">Aljabar Arena Champions</p>
+                    </div>
+
+                    <div id="winner-announcement" class="p-4 bg-purple-950/50 border border-purple-800 rounded-2xl">
+                        <!-- Dynamic Winner Info -->
+                    </div>
+
+                    <div id="final-rankings-list" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar text-left">
+                        <!-- Dynamic rankings -->
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="closeLeaderboard()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl transition">
+                            Tutup
+                        </button>
+                        <button onclick="resetGameFull()" class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3 rounded-xl shadow-lg transition">
+                            Mainkan Pertandingan Baru
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: PESERTA CONTROLLER -->
+        <section id="view-student" class="view-panel hidden max-w-md mx-auto w-full">
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl relative overflow-hidden space-y-5">
+                <div id="student-join-panel" class="bg-slate-950 border border-purple-700/70 rounded-2xl p-4 space-y-3">
+                    <div>
+                        <h3 class="font-bold text-white">Masuk ke Aljabar Arena</h3>
+                        <p class="text-xs text-slate-400 mt-1">Masukkan nama agar kehadiranmu tercatat pada layar guru.</p>
+                    </div>
+                    <label class="block text-xs text-slate-300 font-bold">Nama peserta</label>
+                    <input id="student-name-input" type="text" maxlength="40" autocomplete="name" placeholder="Contoh: Aisyah" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-purple-500">
+                    <label class="block text-xs text-slate-300 font-bold">Kode room</label>
+                    <input id="student-room-input" type="text" maxlength="24" value="ALJ-2026" placeholder="ALJ-2026" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white uppercase outline-none focus:border-purple-500">
+                    <button id="student-join-button" type="button" onclick="joinArena()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl">Gabung Permainan</button>
+                    <p id="student-join-error" class="hidden text-xs text-rose-300"></p>
+                </div>
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-black">
+                            AA
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm text-white">Layar Peserta</h3>
+                            <p class="text-[10px] text-slate-400">Pilih tim & jawab soal</p>
+                        </div>
+                    </div>
+                    <select id="student-team-select" onchange="changeStudentTeam(this.value)" class="bg-slate-800 border border-slate-700 text-cyan-300 text-xs font-bold rounded-xl px-2.5 py-1.5 outline-none">
+                        <option value="1">Tim 1</option>
+                        <option value="2">Tim 2</option>
+                        <option value="3">Tim 3</option>
+                        <option value="4">Tim 4</option>
+                        <option value="5">Tim 5</option>
+                        <option value="6">Tim 6</option>
+                    </select>
+                </div>
+
+                <div class="bg-gradient-to-r from-purple-900/60 to-indigo-900/60 border border-purple-700/50 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-purple-300">Skor Tim Kamu</span>
+                        <h2 id="student-team-name-display" class="font-display font-extrabold text-xl text-white">TIM 1</h2>
+                        <p class="text-[10px] text-slate-400 italic">Skor tim lawan dirahasiakan</p>
+                    </div>
+                    <div id="student-score-display" class="font-mono font-black text-3xl text-cyan-400 bg-slate-950/80 px-4 py-2 rounded-xl border border-cyan-500/30">
+                        0
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center text-[11px] font-bold text-slate-400">
+                        <span id="student-babak-label" class="text-purple-400">Babak 1: Soal Wajib</span>
+                        <span id="student-turn-status" class="text-cyan-400">Menunggu</span>
+                    </div>
+                    <div id="student-question-text" class="text-base font-bold text-white leading-snug">
+                        Menunggu Host memulai pertandingan...
+                    </div>
+                </div>
+
+                <div id="student-action-area" class="space-y-3">
+                    <div id="student-buzzer-container" class="hidden text-center py-4">
+                        <button id="student-buzzer-btn" onclick="pressBuzzer()" class="buzzer-btn w-48 h-48 rounded-full border-4 border-rose-300 font-display font-black text-2xl text-white tracking-widest uppercase flex flex-col items-center justify-center mx-auto active:scale-95 transition-transform">
+                            <i class="fa-solid fa-hand-pointer text-4xl mb-1"></i>
+                            <span>BUZZER!</span>
+                        </button>
+                        <p class="text-xs text-slate-400 mt-3">Tekan secepat mungkin saat tahu jawabannya!</p>
+                    </div>
+
+                    <div id="student-options-container" class="grid grid-cols-1 gap-2.5">
+                        <!-- Options injected dynamically -->
+                    </div>
+                </div>
+
+                <div id="student-status-msg" class="text-center text-xs text-slate-400 bg-slate-800/40 py-2 rounded-xl border border-slate-800">
+                    <i class="fa-solid fa-wifi text-emerald-400 mr-1"></i> Terhubung ke Arena
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: CMS MASTER SOAL & LOG -->
+        <section id="view-cms" class="view-panel hidden space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-database text-purple-400"></i> Master Soal & Riwayat Game (CMS)
+                    </h2>
+                    <p class="text-xs text-slate-400">Kelola bank soal aljabar dan unduh riwayat pertandingan</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportQuestionBankJSON()" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> Export Bank Soal
+                    </button>
+                    <label class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-upload"></i> Import JSON
+                        <input type="file" id="import-json-input" accept=".json" onchange="importQuestionBankJSON(event)" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+                <h3 class="text-sm font-bold uppercase text-purple-400 tracking-wider">Tambah / Edit Soal Baru</h3>
+                <form id="cms-question-form" onsubmit="saveQuestionFromCMS(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="md:col-span-2">
+                        <label class="block text-slate-300 font-bold mb-1">Teks Pertanyaan Aljabar</label>
+                        <input type="text" id="cms-q-text" required placeholder="Contoh: Sederhanakan 4x + 2x - 3..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white outline-none focus:border-purple-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Kategori Sub-Materi</label>
+                        <select id="cms-q-category" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white outline-none">
+                            <option value="Penjumlahan Aljabar">Penjumlahan Aljabar</option>
+                            <option value="Pengurangan Aljabar">Pengurangan Aljabar</option>
+                            <option value="Perkalian Aljabar">Perkalian Aljabar</option>
+                            <option value="Pembagian Aljabar">Pembagian Aljabar</option>
+                            <option value="Penyederhanaan Aljabar">Penyederhanaan Aljabar</option>
+                            <option value="Substitusi Aljabar">Substitusi Aljabar</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Alokasi Babak</label>
+                        <select id="cms-q-round" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white outline-none">
+                            <option value="wajib">Babak Wajib</option>
+                            <option value="rebutan">Babak Rebutan</option>
+                            <option value="cadangan">Bank Cadangan (Tukar Soal)</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div>
+                            <label class="block text-slate-300 font-bold mb-1">Pilihan A</label>
+                            <input type="text" id="cms-opt-0" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 font-bold mb-1">Pilihan B</label>
+                            <input type="text" id="cms-opt-1" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 font-bold mb-1">Pilihan C</label>
+                            <input type="text" id="cms-opt-2" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-300 font-bold mb-1">Pilihan D</label>
+                            <input type="text" id="cms-opt-3" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Kunci Jawaban Benar</label>
+                        <select id="cms-correct-index" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white outline-none">
+                            <option value="0">Pilihan A</option>
+                            <option value="1">Pilihan B</option>
+                            <option value="2">Pilihan C</option>
+                            <option value="3">Pilihan D</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Batas Waktu (Detik)</label>
+                        <input type="number" id="cms-q-time" value="30" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white outline-none">
+                    </div>
+
+                    <div class="md:col-span-2 flex justify-end">
+                        <button type="submit" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl shadow transition">
+                            Simpan Soal Ke Bank Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <h3 class="text-sm font-bold uppercase text-slate-300">Daftar Bank Soal Tersimpan</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950 uppercase text-[10px] text-slate-400">
+                            <tr>
+                                <th class="p-3">Babak</th>
+                                <th class="p-3">Kategori</th>
+                                <th class="p-3">Pertanyaan</th>
+                                <th class="p-3">Kunci</th>
+                                <th class="p-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cms-questions-table-body" class="divide-y divide-slate-800">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-sm font-bold uppercase text-slate-300">Riwayat Match Terakhir (Game Logs)</h3>
+                    <button onclick="exportHistoryLogsJSON()" class="text-xs bg-slate-800 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-slate-700">
+                        <i class="fa-solid fa-file-export mr-1"></i> Export Log JSON
+                    </button>
+                </div>
+                <div id="cms-history-logs-container" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                    <!-- History items -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER & WATERMARK -->
+    <footer class="bg-slate-950 border-t border-slate-800 py-3 px-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>
+                ALJABAR ARENA &copy; 2026 - Interactive Game Engine
+            </div>
+            <div class="font-extrabold text-xs tracking-wider text-purple-400 bg-purple-950/60 border border-purple-800/80 px-3 py-1 rounded-full shadow">
+                Created by Ms. Evi
+            </div>
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC & ENGINE CODE -->
+    <script>
+        // AUTOMATIC FIREBASE CONFIGURATION (HIDDEN BACKGROUND INIT)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkCGiqzlhMXQh5Hm7bQkGjnLgzx91gGdI",
+            authDomain: "aljabar-c4e2b.firebaseapp.com",
+            databaseURL: "https://aljabar-c4e2b-default-rtdb.firebaseio.com",
+            projectId: "aljabar-c4e2b",
+            storageBucket: "aljabar-c4e2b.firebasestorage.app",
+            messagingSenderId: "17460190345",
+            appId: "1:17460190345:web:dded46aa9fd4b646dd7a58",
+            measurementId: "G-B2FHSS9JD1"
+        };
+
+        // WEB AUDIO SYNTHESIZER
+        const AudioFX = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+            playBuzzer() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(440, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            },
+            playCorrect() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            },
+            playWrong() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.4);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            },
+            playTick() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            },
+            playFanfare() {
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50, 880, 1046.50];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start();
+                        osc.stop(this.ctx.currentTime + 0.3);
+                    }, idx * 150);
+                });
+            }
+        };
+
+        const DEFAULT_QUESTIONS = [
+            { id: "W-01", round: "wajib", category: "Penjumlahan Aljabar", question: "Sederhanakan: (4x + 3y) + (2x + 5y) = ...", options: ["8x + 6y", "6x + 2y", "6x + 8y", "2x + 8y"], correctIndex: 2, timeLimit: 30 },
+            { id: "W-02", round: "wajib", category: "Pengurangan Aljabar", question: "Hasil dari: (7a - 4b) - (3a + 2b) adalah...", options: ["4a - 6b", "4a - 2b", "10a - 6b", "4a + 2b"], correctIndex: 0, timeLimit: 30 },
+            { id: "W-03", round: "wajib", category: "Perkalian Aljabar", question: "Hasil dari perkalian suku: 3x × 4xy = ...", options: ["12x²y", "12xy²", "7x²y", "12xy"], correctIndex: 0, timeLimit: 30 },
+            { id: "W-04", round: "wajib", category: "Pembagian Aljabar", question: "Sederhanakan pembagian: 15a²b ÷ 3a = ...", options: ["5b", "5a²b", "5ab", "12ab"], correctIndex: 2, timeLimit: 30 },
+            { id: "W-05", round: "wajib", category: "Penjumlahan Aljabar", question: "Bentuk sederhana dari 5m + 2n - 3m + 4n adalah...", options: ["6m + 2n", "8m + 6n", "2m - 2n", "2m + 6n"], correctIndex: 3, timeLimit: 30 },
+            
+            { id: "W-06", round: "wajib", category: "Pengurangan Aljabar", question: "Sederhanakan: (8p - 3q) - (2p - 5q) = ...", options: ["6p - 2q", "6p - 8q", "10p + 2q", "6p + 2q"], correctIndex: 3, timeLimit: 30 },
+            { id: "W-07", round: "wajib", category: "Perkalian Aljabar", question: "Hasil dari 2a(3a + 4b) adalah...", options: ["6a² + 8ab", "6a + 8ab", "5a² + 8ab", "6a² + 6ab"], correctIndex: 0, timeLimit: 30 },
+            { id: "W-08", round: "wajib", category: "Pembagian Aljabar", question: "Sederhanakan: 24x³y² ÷ 6xy = ...", options: ["4xy²", "4x²y", "4xy", "18x²y"], correctIndex: 1, timeLimit: 30 },
+            { id: "W-09", round: "wajib", category: "Substitusi Aljabar", question: "Jika x = 3 dan y = 2, nilai dari 3x + 2y adalah...", options: ["13", "12", "15", "10"], correctIndex: 0, timeLimit: 30 },
+            { id: "W-10", round: "wajib", category: "Penjumlahan Aljabar", question: "Jumlah dari (2x² + 3x) dan (x² - 5x) adalah...", options: ["3x² - 2x", "3x² + 8x", "x² - 2x", "3x² - 8x"], correctIndex: 0, timeLimit: 30 },
+
+            { id: "R-01", round: "rebutan", category: "Perkalian Aljabar", question: "Jabarkan perkalian: (x + 3)(x + 2) = ...", options: ["x² + 5x + 6", "x² + 6x + 5", "x² + 5x + 5", "x² + 6"], correctIndex: 0, timeLimit: 15 },
+            { id: "R-02", round: "rebutan", category: "Pengurangan Aljabar", question: "Sederhanakan bentuk: (9p - 3) - (4p - 8) = ...", options: ["5p - 5", "5p - 11", "13p - 11", "5p + 5"], correctIndex: 3, timeLimit: 15 },
+            { id: "R-03", round: "rebutan", category: "Pembagian Aljabar", question: "Hasil pembagian dari (12x² + 6x) ÷ 3x adalah...", options: ["4x + 2", "4x + 2x", "4 + 2x", "2x + 4"], correctIndex: 0, timeLimit: 15 },
+            { id: "R-04", round: "rebutan", category: "Substitusi Aljabar", question: "Jika a = 3 dan b = 2, berapakah nilai dari 2a + 4b - 3? ...", options: ["9", "10", "11", "14"], correctIndex: 2, timeLimit: 15 },
+            { id: "R-05", round: "rebutan", category: "Perkalian Aljabar", question: "Jabarkan bentuk kuadrat aljabar: (2x - 3)² = ...", options: ["4x² - 12x + 9", "4x² - 9", "4x² - 6x + 9", "2x² - 12x + 9"], correctIndex: 0, timeLimit: 15 },
+
+            { id: "C-01", round: "cadangan", category: "Substitusi Aljabar", question: "[CADANGAN 1] Jika a = 4 dan b = 3, hitung nilai 2a² - 3b!", options: ["23", "20", "25", "18"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-02", round: "cadangan", category: "Faktorisasi Aljabar", question: "[CADANGAN 2] Faktorkan bentuk aljabar: x² - 16 = ...", options: ["(x - 4)(x + 4)", "(x - 8)(x + 2)", "(x - 4)²", "(x + 4)²"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-03", round: "cadangan", category: "Penjumlahan Aljabar", question: "[CADANGAN 3] Sederhanakan: 3(2x + 4) + 2(x - 3) = ...", options: ["8x + 6", "8x + 18", "6x + 6", "8x - 6"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-04", round: "cadangan", category: "Pengurangan Aljabar", question: "[CADANGAN 4] Sederhanakan: 5(x - 2) - 2(2x + 1) = ...", options: ["x - 12", "x - 8", "9x - 12", "x - 10"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-05", round: "cadangan", category: "Perkalian Aljabar", question: "[CADANGAN 5] Hasil dari (3x - 2)(x + 4) = ...", options: ["3x² + 10x - 8", "3x² + 12x - 8", "3x² - 10x - 8", "3x² + 10x + 8"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-06", round: "cadangan", category: "Pembagian Aljabar", question: "[CADANGAN 6] Sederhanakan: (18a³b² - 12a²b) ÷ 6ab = ...", options: ["3a²b - 2a", "3a²b - 2", "3ab - 2a", "3a² - 2b"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-07", round: "cadangan", category: "Substitusi Aljabar", question: "[CADANGAN 7] Jika p = -2 dan q = 5, nilai dari 3p + 2q = ...", options: ["4", "16", "-4", "6"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-08", round: "cadangan", category: "Faktorisasi Aljabar", question: "[CADANGAN 8] Bentuk faktorisasi dari 6x² + 9x adalah...", options: ["3x(2x + 3)", "3(2x² + 3)", "x(6x + 9)", "3x(2x - 3)"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-09", round: "cadangan", category: "Penjumlahan Aljabar", question: "[CADANGAN 9] Sederhanakan: ½(4x + 8) + ⅓(9x - 6) = ...", options: ["5x + 2", "5x + 6", "7x + 2", "5x - 2"], correctIndex: 0, timeLimit: 30 },
+            { id: "C-10", round: "cadangan", category: "Pengurangan Aljabar", question: "[CADANGAN 10] Hasil dari (10x - 5y) - (3x - 8y) = ...", options: ["7x + 3y", "7x - 13y", "13x + 3y", "7x - 3y"], correctIndex: 0, timeLimit: 30 }
+        ];
+
+        let gameState = {
+            roomCode: "ALJ-2026",
+            activeRound: "wajib", 
+            currentTeamIndex: 1,  
+            teamQuestionCount: 0, 
+            currentQuestionIndex: 0,
+            timer: 30,
+            timerInterval: null,
+            teamCount: 4,
+            scores: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+            buzzerWinnerTeam: null,
+            isStealMode: false,   
+            studentSelectedTeam: 1,
+            questions: [...DEFAULT_QUESTIONS],
+            backupIndex: 0,
+            gameHistory: []
+        };
+
+        const eventBus = new BroadcastChannel('aljabar_arena_bus');
+        let firebaseDB = null;
+        const DEFAULT_ROOM_CODE = 'ALJ-2026';
+        const pageParams = new URLSearchParams(window.location.search);
+        const isStudentLink = pageParams.get('role') === 'student';
+        let currentParticipantId = null;
+        let currentParticipantRef = null;
+        let participantsRef = null;
+        let participantsListener = null;
+        let currentRoomCode = (pageParams.get('room') || DEFAULT_ROOM_CODE).trim().toUpperCase();
+
+        // AUTO INITIALIZE ON PAGE LOAD
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            renderScoreboardHost();
+            renderCMSTable();
+            renderHistoryLogs();
+            document.getElementById('student-room-input').value = currentRoomCode;
+
+            try {
+                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                firebaseDB = firebase.database();
+                document.getElementById('firebase-connection-status').innerText = 'Firebase aktif. Menunggu peserta bergabung...';
+                document.getElementById('firebase-connection-status').className = 'text-[11px] text-emerald-300 mt-2';
+                listenForParticipants(currentRoomCode);
+                firebaseDB.ref('.info/connected').on('value', snap => {
+                    const ok = snap.val() === true;
+                    const el = document.getElementById('firebase-connection-status');
+                    el.innerText = ok ? 'Terhubung ke Firebase Realtime Database.' : 'Koneksi Firebase terputus; periksa internet dan Rules database.';
+                    el.className = 'text-[11px] mt-2 ' + (ok ? 'text-emerald-300' : 'text-rose-300');
+                });
+            } catch (err) {
+                console.error('Firebase Initialization Error:', err);
+                document.getElementById('firebase-connection-status').innerText = 'Firebase gagal diinisialisasi: ' + err.message;
+                document.getElementById('firebase-connection-status').className = 'text-[11px] text-rose-300 mt-2';
+            }
+
+            initQRCode();
+            eventBus.onmessage = (event) => handleBroadcastEvent(event.data);
+            if (isStudentLink) {
+                switchView('student');
+                document.getElementById('student-join-panel').classList.remove('hidden');
+            }
+        });
+
+        function switchView(viewName) {
+            document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('bg-purple-600', 'text-white', 'shadow');
+                tab.classList.add('text-slate-400');
+            });
+
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            const activeTab = document.getElementById(`tab-${viewName}`);
+            activeTab.classList.add('bg-purple-600', 'text-white', 'shadow');
+            activeTab.classList.remove('text-slate-400');
+
+            if (viewName === 'student') {
+                updateStudentUI();
+            }
+        }
+
+        function getStudentJoinURL(roomCode = currentRoomCode) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('role', 'student');
+            url.searchParams.set('room', (roomCode || DEFAULT_ROOM_CODE).toUpperCase());
+            url.hash = '';
+            return url.toString();
+        }
+
+        function initQRCode() {
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+            const joinURL = getStudentJoinURL(currentRoomCode);
+            new QRCode(qrContainer, {
+                text: joinURL, width: 140, height: 140,
+                colorDark: '#0f172a', colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            const note = document.getElementById('qr-join-url');
+            if (note) note.textContent = joinURL;
+        }
+
+        function listenForParticipants(roomCode) {
+            if (!firebaseDB) return;
+            if (participantsRef && participantsListener) participantsRef.off('value', participantsListener);
+            currentRoomCode = (roomCode || DEFAULT_ROOM_CODE).trim().toUpperCase();
+            participantsRef = firebaseDB.ref('rooms/' + currentRoomCode + '/participants');
+            participantsListener = snapshot => {
+                const all = snapshot.val() || {};
+                const entries = Object.entries(all).filter(([, p]) => p && p.online === true);
+                document.getElementById('participant-count').textContent = String(entries.length);
+                const roster = document.getElementById('participant-roster');
+                roster.innerHTML = '';
+                if (!entries.length) {
+                    roster.innerHTML = '<span class="text-slate-500">Belum ada peserta online. Minta siswa scan QR dan menekan Gabung Permainan.</span>';
+                    return;
+                }
+                entries.sort((a,b) => (a[1].joinedAt || 0) - (b[1].joinedAt || 0));
+                entries.forEach(([, p]) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700';
+                    chip.textContent = (p.name || 'Peserta') + ' · Tim ' + (p.team || 1);
+                    roster.appendChild(chip);
+                });
+            };
+            participantsRef.on('value', participantsListener, err => {
+                console.error('Gagal membaca peserta:', err);
+                document.getElementById('firebase-connection-status').textContent = 'Tidak dapat membaca peserta. Periksa Rules Realtime Database.';
+                document.getElementById('firebase-connection-status').className = 'text-[11px] text-rose-300 mt-2';
+            });
+        }
+
+        async function joinArena() {
+            const nameInput = document.getElementById('student-name-input');
+            const roomInput = document.getElementById('student-room-input');
+            const error = document.getElementById('student-join-error');
+            const button = document.getElementById('student-join-button');
+            const name = nameInput.value.trim();
+            const roomCode = (roomInput.value.trim() || DEFAULT_ROOM_CODE).toUpperCase();
+            error.classList.add('hidden');
+            if (!name) { error.textContent = 'Masukkan nama terlebih dahulu.'; error.classList.remove('hidden'); nameInput.focus(); return; }
+            if (!firebaseDB) { error.textContent = 'Belum terhubung ke Firebase. Periksa koneksi dan konfigurasi database.'; error.classList.remove('hidden'); return; }
+            button.disabled = true; button.textContent = 'Menghubungkan...';
+            try {
+                if (currentParticipantRef) {
+                    try { await currentParticipantRef.update({ online: false, leftAt: Date.now() }); } catch (_) {}
+                }
+                currentRoomCode = roomCode;
+                listenForParticipants(roomCode);
+                const participants = firebaseDB.ref('rooms/' + roomCode + '/participants');
+                currentParticipantRef = participants.push();
+                currentParticipantId = currentParticipantRef.key;
+                const team = parseInt(document.getElementById('student-team-select').value, 10) || 1;
+                const participantData = { name, team, online: true, joinedAt: Date.now(), userAgent: 'web' };
+                await currentParticipantRef.set(participantData);
+                if (firebaseDB.ref('.info/connected')) {
+                    firebaseDB.ref('.info/connected').on('value', snap => {
+                        if (snap.val() === true && currentParticipantRef) {
+                            currentParticipantRef.onDisconnect().update({ online: false, leftAt: Date.now() }).catch(err => console.warn('onDisconnect tidak tersedia:', err));
+                        }
+                    });
+                }
+                document.getElementById('student-join-panel').classList.add('hidden');
+                document.getElementById('student-status-msg').innerHTML = '<i class="fa-solid fa-wifi text-emerald-400 mr-1"></i> Bergabung sebagai ' + escapeHtml(name) + ' · Room ' + escapeHtml(roomCode);
+                document.getElementById('student-status-msg').className = 'text-center text-xs text-emerald-300 bg-emerald-950/30 py-2 rounded-xl border border-emerald-800';
+                initQRCode();
+                showNotification('Berhasil bergabung ke Aljabar Arena!');
+            } catch (err) {
+                console.error('Gagal bergabung:', err);
+                error.textContent = 'Gagal bergabung: ' + (err.message || 'periksa Rules Firebase');
+                error.classList.remove('hidden');
+            } finally { button.disabled = false; button.textContent = 'Gabung Permainan'; }
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
+        function updateTeamCountLabel(val) {
+            gameState.teamCount = parseInt(val);
+            document.getElementById('team-count-display').innerText = val;
+            renderScoreboardHost();
+        }
+
+        function startMatch(roundType) {
+            gameState.activeRound = roundType;
+            gameState.currentTeamIndex = 1;
+            gameState.teamQuestionCount = 1;
+            gameState.currentQuestionIndex = 0;
+            gameState.buzzerWinnerTeam = null;
+            gameState.isStealMode = false;
+
+            document.getElementById('host-lobby-panel').classList.add('hidden');
+            document.getElementById('host-arena-panel').classList.remove('hidden');
+
+            loadQuestionIntoHost();
+            broadcastState('MATCH_STARTED');
+        }
+
+        function filterQuestionsForRound() {
+            return gameState.questions.filter(q => q.round === gameState.activeRound);
+        }
+
+        function loadQuestionIntoHost() {
+            clearInterval(gameState.timerInterval);
+            gameState.buzzerWinnerTeam = null;
+            gameState.isStealMode = false;
+
+            document.getElementById('host-steal-indicator').classList.add('hidden');
+            document.getElementById('host-wrong-alert').classList.add('hidden');
+            document.getElementById('question-card-container').classList.remove('glow-box-danger', 'animate-shake');
+
+            const roundQuestions = filterQuestionsForRound();
+            if (roundQuestions.length === 0 || gameState.currentQuestionIndex >= roundQuestions.length) {
+                if (gameState.activeRound === 'wajib') {
+                    showNotification("Babak Wajib Selesai! Otomatis Masuk Ke Babak Rebutan...");
+                    AudioFX.playFanfare();
+                    setTimeout(() => {
+                        gameState.activeRound = 'rebutan';
+                        gameState.currentQuestionIndex = 0;
+                        loadQuestionIntoHost();
+                    }, 2500);
+                    return;
+                } else {
+                    endMatch();
+                    return;
+                }
+            }
+
+            const currentQ = roundQuestions[gameState.currentQuestionIndex];
+            
+            document.getElementById('host-babak-badge').innerText = gameState.activeRound === 'wajib' ? 'Babak 1: Soal Wajib' : 'Babak 2: Soal Rebutan';
+            document.getElementById('host-target-team-badge').innerText = gameState.activeRound === 'wajib' 
+                ? `Giliran: Tim ${gameState.currentTeamIndex} (Soal ${gameState.teamQuestionCount}/5)` 
+                : 'SIAPA CEPAT DIA DAPAT';
+            
+            document.getElementById('host-q-index').innerText = gameState.currentQuestionIndex + 1;
+            document.getElementById('host-q-total').innerText = roundQuestions.length;
+            document.getElementById('host-q-category').innerText = currentQ.category;
+            document.getElementById('host-question-text').innerText = currentQ.question;
+            document.getElementById('host-buzzer-alert').classList.add('hidden');
+
+            const optionsGrid = document.getElementById('host-options-grid');
+            optionsGrid.innerHTML = '';
+            const labels = ['A', 'B', 'C', 'D'];
+            
+            currentQ.options.forEach((opt, idx) => {
+                const optBtn = document.createElement('div');
+                optBtn.className = "bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center gap-3 text-slate-200 font-semibold text-lg hover:border-purple-500/50 transition cursor-pointer";
+                optBtn.innerHTML = `
+                    <span class="w-8 h-8 rounded-lg bg-purple-900/60 border border-purple-700 text-purple-300 flex items-center justify-center text-sm font-bold">${labels[idx]}</span>
+                    <span>${opt}</span>
+                `;
+                optBtn.onclick = () => hostGradeAnswer(idx);
+                optionsGrid.appendChild(optBtn);
+            });
+
+            gameState.timer = currentQ.timeLimit || (gameState.activeRound === 'wajib' ? parseInt(document.getElementById('host-timer-wajib').value) : parseInt(document.getElementById('host-timer-rebutan').value));
+            document.getElementById('host-timer-box').innerText = gameState.timer;
+
+            gameState.timerInterval = setInterval(() => {
+                gameState.timer--;
+                document.getElementById('host-timer-box').innerText = gameState.timer;
+                if (gameState.timer <= 5 && gameState.timer > 0) {
+                    AudioFX.playTick();
+                }
+                if (gameState.timer <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    handleTimeOutOrWrong();
+                }
+            }, 1000);
+
+            broadcastState('QUESTION_UPDATED');
+            updateStudentUI();
+        }
+
+        function swapCurrentQuestionHost() {
+            const backups = gameState.questions.filter(q => q.round === 'cadangan');
+            if (backups.length === 0) {
+                alert("Bank soal cadangan habis!");
+                return;
+            }
+
+            const roundQuestions = filterQuestionsForRound();
+            if (!roundQuestions[gameState.currentQuestionIndex]) return;
+
+            const oldQ = roundQuestions[gameState.currentQuestionIndex];
+            const replacement = backups[gameState.backupIndex % backups.length];
+            gameState.backupIndex++;
+
+            replacement.round = gameState.activeRound;
+            const globalIdx = gameState.questions.findIndex(q => q.id === oldQ.id);
+            if (globalIdx !== -1) {
+                gameState.questions[globalIdx] = replacement;
+            }
+
+            showNotification("Soal berhasil ditukar dengan Soal Cadangan!");
+            loadQuestionIntoHost();
+        }
+
+        function handleTimeOutOrWrong() {
+            AudioFX.playWrong();
+            const container = document.getElementById('question-card-container');
+            container.classList.add('glow-box-danger', 'animate-shake');
+
+            if (gameState.activeRound === 'wajib' && !gameState.isStealMode) {
+                gameState.isStealMode = true;
+                document.getElementById('wrong-alert-title').innerText = `JAWABAN TIM ${gameState.currentTeamIndex} SALAH / WAKTU HABIS!`;
+                document.getElementById('wrong-alert-desc').innerText = `Soal dilempar! Tim lain dipersilakan menekan buzzer untuk merebut (+100 / -50).`;
+                document.getElementById('host-wrong-alert').classList.remove('hidden');
+                document.getElementById('host-steal-indicator').classList.remove('hidden');
+            } else {
+                nextQuestion();
+            }
+            updateStudentUI();
+        }
+
+        function dismissWrongAlert() {
+            document.getElementById('host-wrong-alert').classList.add('hidden');
+        }
+
+        function hostGradeAnswer(selectedIndex) {
+            const roundQuestions = filterQuestionsForRound();
+            
+            if (!roundQuestions || gameState.currentQuestionIndex >= roundQuestions.length) {
+                nextQuestion();
+                return;
+            }
+
+            const currentQ = roundQuestions[gameState.currentQuestionIndex];
+            if (!currentQ) {
+                nextQuestion();
+                return;
+            }
+
+            let scoringTeam = gameState.activeRound === 'wajib' 
+                ? (gameState.isStealMode ? gameState.buzzerWinnerTeam : gameState.currentTeamIndex) 
+                : gameState.buzzerWinnerTeam;
+
+            if (!scoringTeam && (gameState.activeRound === 'rebutan' || gameState.isStealMode)) {
+                alert('Belum ada tim yang menekan buzzer!');
+                return;
+            }
+
+            if (selectedIndex === currentQ.correctIndex) {
+                AudioFX.playCorrect();
+                gameState.scores[scoringTeam] = (gameState.scores[scoringTeam] || 0) + 100;
+                showNotification(`Jawaban Benar! Tim ${scoringTeam} +100 poin`);
+                renderScoreboardHost();
+                nextQuestion();
+            } else {
+                if (gameState.activeRound === 'wajib' && !gameState.isStealMode) {
+                    handleTimeOutOrWrong();
+                } else {
+                    AudioFX.playWrong();
+                    gameState.scores[scoringTeam] = (gameState.scores[scoringTeam] || 0) - 50;
+                    showNotification(`Jawaban Salah! Tim ${scoringTeam} -50 poin`);
+                    renderScoreboardHost();
+                    nextQuestion();
+                }
+            }
+        }
+
+        function gradeBuzzerAnswer(isCorrect) {
+            if (!gameState.buzzerWinnerTeam) return;
+
+            if (isCorrect) {
+                AudioFX.playCorrect();
+                gameState.scores[gameState.buzzerWinnerTeam] += 100;
+                showNotification(`Jawaban Benar! Tim ${gameState.buzzerWinnerTeam} +100 Poin`);
+            } else {
+                AudioFX.playWrong();
+                gameState.scores[gameState.buzzerWinnerTeam] -= 50;
+                showNotification(`Salah Jawab! Tim ${gameState.buzzerWinnerTeam} -50 Poin`);
+            }
+
+            renderScoreboardHost();
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            clearInterval(gameState.timerInterval);
+
+            if (gameState.activeRound === 'wajib') {
+                gameState.teamQuestionCount++;
+                if (gameState.teamQuestionCount > 5) {
+                    gameState.teamQuestionCount = 1;
+                    gameState.currentTeamIndex++;
+                    if (gameState.currentTeamIndex > gameState.teamCount) {
+                        showNotification("Seluruh tim telah menyelesaikan Babak Wajib!");
+                        AudioFX.playFanfare();
+                        setTimeout(() => {
+                            gameState.activeRound = 'rebutan';
+                            gameState.currentQuestionIndex = 0;
+                            loadQuestionIntoHost();
+                        }, 2000);
+                        return;
+                    }
+                }
+            }
+
+            gameState.currentQuestionIndex++;
+            loadQuestionIntoHost();
+        }
+
+        function resetBuzzerHost() {
+            gameState.buzzerWinnerTeam = null;
+            document.getElementById('host-buzzer-alert').classList.add('hidden');
+            broadcastState('BUZZER_RESET');
+        }
+
+        function renderScoreboardHost() {
+            const grid = document.getElementById('host-scoreboard-grid');
+            grid.innerHTML = '';
+
+            for (let i = 1; i <= gameState.teamCount; i++) {
+                const isCurrentTurn = gameState.activeRound === 'wajib' && gameState.currentTeamIndex === i;
+                const isBuzzerWinner = gameState.buzzerWinnerTeam === i;
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-900 border ${isBuzzerWinner ? 'border-amber-400 glow-box animate-bounce' : isCurrentTurn ? 'border-cyan-400 ring-2 ring-cyan-500/50' : 'border-slate-800'} p-4 rounded-2xl text-center relative overflow-hidden transition-all`;
+                card.innerHTML = `
+                    <div class="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Tim ${i}</div>
+                    <div class="font-mono font-black text-2xl md:text-3xl text-cyan-400 mt-1">${gameState.scores[i]}</div>
+                    <div class="text-[9px] text-slate-500 mt-1 uppercase">Poin Arena</div>
+                    ${isCurrentTurn ? '<span class="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>' : ''}
+                `;
+                grid.appendChild(card);
+            }
+
+            updateStudentUI();
+        }
+
+        function changeStudentTeam(teamVal) {
+            gameState.studentSelectedTeam = parseInt(teamVal);
+            document.getElementById('student-team-name-display').innerText = `TIM ${teamVal}`;
+            if (currentParticipantRef) currentParticipantRef.update({ team: parseInt(teamVal, 10) }).catch(err => console.warn('Gagal memperbarui tim peserta:', err));
+            updateStudentUI();
+        }
+
+        function pressBuzzer() {
+            AudioFX.playBuzzer();
+            const isRebutan = gameState.activeRound === 'rebutan';
+            const isSteal = gameState.activeRound === 'wajib' && gameState.isStealMode;
+
+            if (!isRebutan && !isSteal) return;
+            if (gameState.buzzerWinnerTeam !== null) return;
+            if (isSteal && gameState.studentSelectedTeam === gameState.currentTeamIndex) {
+                alert("Tim kamu baru saja menjawab salah! Hanya tim lain yang boleh merebut!");
+                return;
+            }
+
+            gameState.buzzerWinnerTeam = gameState.studentSelectedTeam;
+            broadcastState('BUZZER_PRESSED', { team: gameState.studentSelectedTeam });
+
+            document.getElementById('buzzer-winner-name').innerText = `TIM ${gameState.studentSelectedTeam}`;
+            document.getElementById('host-buzzer-alert').classList.remove('hidden');
+
+            updateStudentUI();
+        }
+
+        function submitStudentOption(optIdx) {
+            if (gameState.activeRound === 'wajib' && !gameState.isStealMode) {
+                if (gameState.studentSelectedTeam !== gameState.currentTeamIndex) {
+                    alert("Bukan giliran tim kamu untuk menjawab!");
+                    return;
+                }
+                hostGradeAnswer(optIdx);
+            } else {
+                if (gameState.buzzerWinnerTeam !== gameState.studentSelectedTeam) {
+                    alert("Tekan Buzzer terlebih dahulu untuk menjawab!");
+                    return;
+                }
+                hostGradeAnswer(optIdx);
+            }
+        }
+
+        function updateStudentUI() {
+            const team = gameState.studentSelectedTeam;
+            document.getElementById('student-score-display').innerText = gameState.scores[team] || 0;
+            document.getElementById('student-babak-label').innerText = gameState.activeRound === 'wajib' ? 'Babak 1: Soal Wajib' : 'Babak 2: Soal Rebutan';
+
+            const turnStatusElem = document.getElementById('student-turn-status');
+            if (gameState.activeRound === 'wajib') {
+                if (gameState.isStealMode) {
+                    turnStatusElem.innerText = "MODE LEMPARAN (BUZZER)";
+                    turnStatusElem.className = "text-amber-400 font-bold animate-pulse";
+                } else if (gameState.currentTeamIndex === team) {
+                    turnStatusElem.innerText = "GILIRAN TIM KAMU!";
+                    turnStatusElem.className = "text-emerald-400 font-bold animate-pulse";
+                } else {
+                    turnStatusElem.innerText = `Giliran Tim ${gameState.currentTeamIndex}`;
+                    turnStatusElem.className = "text-slate-400";
+                }
+            } else {
+                turnStatusElem.innerText = "BABAK REBUTAN";
+                turnStatusElem.className = "text-rose-400 font-bold";
+            }
+
+            const roundQuestions = filterQuestionsForRound();
+            const currentQ = roundQuestions[gameState.currentQuestionIndex];
+
+            const questionTextElem = document.getElementById('student-question-text');
+            const buzzerContainer = document.getElementById('student-buzzer-container');
+            const optionsContainer = document.getElementById('student-options-container');
+
+            if (!currentQ) {
+                questionTextElem.innerText = "Pertandingan Selesai / Menunggu Host.";
+                buzzerContainer.classList.add('hidden');
+                optionsContainer.innerHTML = '';
+                return;
+            }
+
+            questionTextElem.innerText = currentQ.question;
+
+            if (gameState.activeRound === 'rebutan' || gameState.isStealMode) {
+                buzzerContainer.classList.remove('hidden');
+                const buzzerBtn = document.getElementById('student-buzzer-btn');
+
+                if (gameState.buzzerWinnerTeam === null) {
+                    buzzerBtn.disabled = false;
+                    buzzerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    buzzerBtn.disabled = true;
+                    buzzerBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                buzzerContainer.classList.add('hidden');
+            }
+
+            optionsContainer.innerHTML = '';
+            const labels = ['A', 'B', 'C', 'D'];
+            currentQ.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.onclick = () => submitStudentOption(idx);
+                btn.className = "w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-left text-sm font-medium text-slate-200 flex items-center gap-3 active:scale-98 transition";
+                btn.innerHTML = `
+                    <span class="w-7 h-7 rounded-lg bg-purple-900/60 text-purple-300 font-bold flex items-center justify-center text-xs border border-purple-700">${labels[idx]}</span>
+                    <span>${opt}</span>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function endMatch() {
+            clearInterval(gameState.timerInterval);
+            AudioFX.playFanfare();
+
+            let sortedTeams = [];
+            for (let i = 1; i <= gameState.teamCount; i++) {
+                sortedTeams.push({ team: i, score: gameState.scores[i] });
+            }
+            sortedTeams.sort((a, b) => b.score - a.score);
+
+            const winner = sortedTeams[0];
+
+            document.getElementById('winner-announcement').innerHTML = `
+                <h3 class="text-2xl font-black text-cyan-300">TIM ${winner.team} JUARA ALJABAR ARENA!</h3>
+                <p class="text-sm text-slate-300 mt-1">Total Perolehan Skor Akumulasi: <span class="font-mono font-bold text-emerald-400 text-lg">${winner.score} Poin</span></p>
+            `;
+
+            const rankingsList = document.getElementById('final-rankings-list');
+            rankingsList.innerHTML = '';
+            sortedTeams.forEach((item, index) => {
+                const rankRow = document.createElement('div');
+                rankRow.className = "bg-slate-950 p-3 rounded-xl flex justify-between items-center border border-slate-800 text-xs";
+                rankRow.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full ${index === 0 ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'} font-bold flex items-center justify-center text-xs">${index + 1}</span>
+                        <span class="font-bold text-white">TIM ${item.team}</span>
+                    </div>
+                    <span class="font-mono font-bold text-cyan-400">${item.score} Poin</span>
+                `;
+                rankingsList.appendChild(rankRow);
+            });
+
+            const logEntry = {
+                id: "LOG-" + Date.now(),
+                timestamp: new Date().toLocaleString("id-ID"),
+                winnerTeam: `Tim ${winner.team}`,
+                winningScore: winner.score,
+                allScores: { ...gameState.scores }
+            };
+            gameState.gameHistory.unshift(logEntry);
+            saveToLocalStorage();
+            renderHistoryLogs();
+
+            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+            document.getElementById('host-leaderboard-modal').classList.remove('hidden');
+        }
+
+        function closeLeaderboard() {
+            document.getElementById('host-leaderboard-modal').classList.add('hidden');
+        }
+
+        function resetGameFull() {
+            closeLeaderboard();
+            for (let key in gameState.scores) gameState.scores[key] = 0;
+            gameState.currentQuestionIndex = 0;
+            gameState.currentTeamIndex = 1;
+            gameState.teamQuestionCount = 1;
+            document.getElementById('host-arena-panel').classList.add('hidden');
+            document.getElementById('host-lobby-panel').classList.remove('hidden');
+            renderScoreboardHost();
+        }
+
+        function saveQuestionFromCMS(e) {
+            e.preventDefault();
+            const qText = document.getElementById('cms-q-text').value;
+            const category = document.getElementById('cms-q-category').value;
+            const round = document.getElementById('cms-q-round').value;
+            const opts = [
+                document.getElementById('cms-opt-0').value,
+                document.getElementById('cms-opt-1').value,
+                document.getElementById('cms-opt-2').value,
+                document.getElementById('cms-opt-3').value
+            ];
+            const correctIndex = parseInt(document.getElementById('cms-correct-index').value);
+            const timeLimit = parseInt(document.getElementById('cms-q-time').value);
+
+            const newQ = {
+                id: "Q-CUSTOM-" + Date.now(),
+                round,
+                category,
+                question: qText,
+                options: opts,
+                correctIndex,
+                timeLimit
+            };
+
+            gameState.questions.push(newQ);
+            saveToLocalStorage();
+            renderCMSTable();
+            document.getElementById('cms-question-form').reset();
+            showNotification("Soal baru berhasil disimpan ke Bank Data!");
+        }
+
+        function deleteQuestionCMS(id) {
+            gameState.questions = gameState.questions.filter(q => q.id !== id);
+            saveToLocalStorage();
+            renderCMSTable();
+        }
+
+        function renderCMSTable() {
+            const tbody = document.getElementById('cms-questions-table-body');
+            tbody.innerHTML = '';
+
+            gameState.questions.forEach(q => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50";
+                tr.innerHTML = `
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${q.round === 'wajib' ? 'bg-purple-950 text-purple-300' : q.round === 'rebutan' ? 'bg-pink-950 text-pink-300' : 'bg-amber-950 text-amber-300'}">${q.round}</span></td>
+                    <td class="p-3 text-cyan-300 font-semibold">${q.category}</td>
+                    <td class="p-3 font-medium text-white">${q.question}</td>
+                    <td class="p-3 font-mono font-bold text-emerald-400">${q.options[q.correctIndex]}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteQuestionCMS('${q.id}')" class="text-rose-400 hover:text-rose-300 p-1">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderHistoryLogs() {
+            const container = document.getElementById('cms-history-logs-container');
+            container.innerHTML = '';
+
+            if (gameState.gameHistory.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 italic p-2">Belum ada riwayat pertandingan yang tersimpan.</div>`;
+                return;
+            }
+
+            gameState.gameHistory.forEach(log => {
+                const item = document.createElement('div');
+                item.className = "bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs";
+                item.innerHTML = `
+                    <div>
+                        <span class="font-bold text-white">${log.winnerTeam} (Menang)</span>
+                        <div class="text-[10px] text-slate-400">${log.timestamp}</div>
+                    </div>
+                    <span class="font-mono font-bold text-emerald-400">${log.winningScore} Poin</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function exportQuestionBankJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState.questions, null, 2));
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = "Bank_Soal_Aljabar_Arena.json";
+            a.click();
+        }
+
+        function importQuestionBankJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        gameState.questions = imported;
+                        saveToLocalStorage();
+                        renderCMSTable();
+                        showNotification("Bank soal berhasil di-import!");
+                    }
+                } catch (err) {
+                    alert("Format JSON tidak valid!");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function exportHistoryLogsJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState.gameHistory, null, 2));
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = "Game_History_Log.json";
+            a.click();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('aljabar_arena_questions', JSON.stringify(gameState.questions));
+            localStorage.setItem('aljabar_arena_history', JSON.stringify(gameState.gameHistory));
+        }
+
+        function loadFromLocalStorage() {
+            const savedQ = localStorage.getItem('aljabar_arena_questions');
+            const savedH = localStorage.getItem('aljabar_arena_history');
+
+            if (savedQ) gameState.questions = JSON.parse(savedQ);
+            if (savedH) gameState.gameHistory = JSON.parse(savedH);
+        }
+
+        function broadcastState(eventType, payload = {}) {
+            eventBus.postMessage({ type: eventType, payload, state: gameState });
+            if (firebaseDB) {
+                firebaseDB.ref('rooms/' + currentRoomCode + '/state').set({ type: eventType, payload, state: gameState, updatedAt: Date.now() })
+                    .catch(err => console.error('Gagal menyinkronkan state game:', err));
+            }
+        }
+
+        function handleBroadcastEvent(data) {
+            if (data.type === 'BUZZER_PRESSED') {
+                gameState.buzzerWinnerTeam = data.payload.team;
+                document.getElementById('buzzer-winner-name').innerText = `TIM ${data.payload.team}`;
+                document.getElementById('host-buzzer-alert').classList.remove('hidden');
+                renderScoreboardHost();
+            }
+        }
+
+        function showNotification(msg) {
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-5 right-5 bg-purple-600 text-white font-bold px-4 py-3 rounded-2xl shadow-2xl z-50 text-xs border border-purple-400 animate-bounce";
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        window.addEventListener('pagehide', () => {
+            if (currentParticipantRef) currentParticipantRef.update({ online: false, leftAt: Date.now() }).catch(() => {});
+        });
+    </script>
+</body>
+</html>
